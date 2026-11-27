@@ -291,6 +291,7 @@ async function doEmailAuth(){
       if (!name) { authMsg = "Please write your name first."; render(); return; }
       const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
       await cred.user.updateProfile({ displayName: name });
+      await cred.user.reload(); fbUser = firebase.auth().currentUser; render();
     } else {
       await firebase.auth().signInWithEmailAndPassword(email, pass);
     }
@@ -761,6 +762,17 @@ function dlFallback(a){
   link.href = a.apk_url; link.rel = "noopener";
   document.body.appendChild(link); link.click(); link.remove();
 }
+async function dlFetch(url, signal){
+  try {
+    return await fetch(url, { signal });
+  } catch (e) {
+    if (signal.aborted) throw e;
+    if (url.indexOf("murshid-store-cache.dbibi698.workers.dev") !== -1) {
+      return await fetch(url.replace("https://murshid-store-cache.dbibi698.workers.dev", "https://github.com"), { signal });
+    }
+    throw e;
+  }
+}
 async function handleDownload(a){
   if (!a.apk_url) { toast("No download link for this app yet."); return; }
   if (dlAbort) { toast("A download is already running — please wait or cancel it."); return; }
@@ -768,7 +780,7 @@ async function handleDownload(a){
   const ctrl = new AbortController(); dlAbort = ctrl;
   const chunks = []; let done = 0, total = 0;
   try {
-    const res = await fetch(a.apk_url, { signal: ctrl.signal });
+    const res = await dlFetch(a.apk_url, ctrl.signal);
     if (!res.ok) throw new Error("HTTP " + res.status);
     if (!res.body) throw new Error("stream unsupported");
     total = Number(res.headers.get("Content-Length") || 0) || 0;
