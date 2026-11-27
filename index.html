@@ -161,6 +161,8 @@
   @media(min-width:640px){.scrim{align-items:center}}
   .dialog{background:var(--card);border-radius:20px;padding:16px;width:100%;max-width:420px}
   .dialog h3{font-size:18px;font-weight:700}
+  .adlabel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:8px}
+  .adslot{display:block;min-height:250px;background:var(--searchbg);border-radius:12px}
   .reason{display:block;width:100%;text-align:left;padding:12px 0;font-size:15px;border-bottom:1px solid var(--divider);min-height:48px}
   #toast{position:fixed;bottom:128px;left:50%;transform:translateX(-50%);z-index:60;background:#2A2642;color:var(--text);border:1px solid var(--divider);
     border-radius:12px;padding:10px 16px;font-size:14px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,.5);display:none;max-width:calc(100% - 32px);text-align:center}
@@ -236,6 +238,16 @@
 const SB = "https://xiwlocrclppinyzlboip.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhpd2xvY3JjbHBwaW55emxib2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTQ5NzksImV4cCI6MjExMTEzMDk3OX0.qgzWOvdwlJe3ivHe_QS2FHXewMpVFKIKLIKdMF0t_Ng";
 const H = { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" };
+/* Download ad (AdSense-safe). OFF until AdSense approves this site AND a
+   real ad-unit slot ID is filled in below. While ADS_ENABLED is false (or
+   the slot ID is empty) downloads start immediately, exactly as now.
+   When enabled, tapping Download first shows an interstitial overlay with
+   a real AdSense ad slot and a clear "Continue to download" button; the
+   download starts only after the visitor dismisses it. The visitor is
+   NEVER required to click the ad, there is no redirect to an advertiser
+   and no fake download button — that would breach AdSense policy. */
+const ADS_ENABLED = false;
+const AD_SLOT_DOWNLOAD = "";
 
 /* Firebase Auth — same project as the Murshid Store APK (murshid-store),
    so an account registered in the APK signs in here with the same
@@ -802,9 +814,26 @@ async function dlFetch(url, signal){
     throw e;
   }
 }
+function showDownloadAd(cb){
+  if (!ADS_ENABLED || !AD_SLOT_DOWNLOAD) { cb(); return; }
+  $dialog.innerHTML = '<div class="scrim" role="dialog" aria-modal="true" aria-label="Advertisement"><div class="dialog">'
+    + '<p class="adlabel">Advertisement</p>'
+    + '<ins class="adsbygoogle adslot" style="display:block" data-ad-client="ca-pub-7198633592223192" data-ad-slot="' + AD_SLOT_DOWNLOAD + '" data-ad-format="auto" data-full-width-responsive="true"></ins>'
+    + '<button class="bigdl fd press" id="btnContinueDl" style="margin-top:14px">Continue to download</button>'
+    + '<button class="fd press" id="btnCloseDlAd" style="display:block;width:100%;background:none;border:0;color:var(--muted);font-size:14px;padding:10px 0 0;cursor:pointer">Close</button>'
+    + '</div></div>';
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+  let finished = false;
+  const done = () => { if (finished) return; finished = true; $dialog.innerHTML = ""; cb(); };
+  document.getElementById("btnContinueDl").addEventListener("click", done);
+  document.getElementById("btnCloseDlAd").addEventListener("click", done);
+}
 async function handleDownload(a){
   if (!a.apk_url) { toast("No download link for this app yet."); return; }
   if (dlAbort) { toast("A download is already running — please wait or cancel it."); return; }
+  showDownloadAd(function(){ startDownload(a); });
+}
+async function startDownload(a){
   dlShow(a);
   const ctrl = new AbortController(); dlAbort = ctrl;
   const chunks = []; let done = 0, total = 0;
