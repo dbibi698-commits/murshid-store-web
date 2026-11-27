@@ -3,8 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Murshid Store</title>
-<meta name="description" content="Murshid Store — browse and download apps. No login needed.">
+<title>Senori — Murshid Store | Download Android Apps &amp; Games (APK)</title>
+<meta name="description" content="Senori (Murshid Store) — your apps, one store. Browse and download Android apps and games as APK files: trending apps, new apps, games and more. No login needed to download.">
+<meta name="keywords" content="Murshid Store, murshidstore, Murshid Store APK, download APK, Android apps, Android games, free APK download">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://senori.isroot.in/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://senori.isroot.in/">
+<meta property="og:site_name" content="Senori">
+<meta property="og:title" content="Senori — Murshid Store | Download Android Apps &amp; Games (APK)">
+<meta property="og:description" content="Senori (Murshid Store) — your apps, one store. Browse and download Android apps and games as APK files. No login needed to download.">
+<meta property="og:image" content="https://senori.isroot.in/app_logo.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Senori — Murshid Store | Download Android Apps &amp; Games (APK)">
+<meta name="twitter:description" content="Senori (Murshid Store) — your apps, one store. Browse and download Android apps and games as APK files. No login needed to download.">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"Murshid Store","url":"https://senori.isroot.in/","alternateName":["MurshidStore","Murshid Store Web"],"description":"Senori (Murshid Store) — your apps, one store. Browse and download Android apps and games as APK files. No login needed to download."}
+</script>
 <link rel="icon" href="app_logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -156,8 +171,25 @@
   #splash .sname{font-size:28px;font-weight:700;margin-top:20px;animation:nameIn 700ms ease-out 250ms both}
   #splash .stag{font-size:13px;color:var(--muted);margin-top:6px;animation:nameIn 700ms ease-out 400ms both}
   @keyframes nameIn{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+  /* auth (Firebase, murshid-store project) */
+  .authtabs{display:flex;gap:8px;margin-top:12px}
+  .authtab{flex:1;height:48px;border-radius:24px;background:var(--searchbg);color:var(--muted);font-size:15px;font-weight:600}
+  .authtab.on{background:var(--accent);color:#fff}
+  .authfield{width:100%;height:52px;background:var(--searchbg);border:1px solid var(--divider);border-radius:14px;color:var(--text);padding:0 16px;font-size:15px;font-family:inherit;outline:none;margin-top:10px}
+  .authfield::placeholder{color:var(--hint)}
+  .googlebtn{width:100%;height:52px;border-radius:26px;background:#fff;color:#1f1f1f;font-size:15px;font-weight:600;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px}
+  .authrow{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+  .authlink{font-size:14px;color:var(--violet);font-weight:600}
+  .checkrow{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+  .divider{display:flex;align-items:center;gap:12px;margin:16px 0 4px;color:var(--muted);font-size:13px}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--divider)}
+  .autherr{font-size:13px;color:var(--accent);margin-top:10px}
+  .authok{font-size:13px;color:#22C55E;margin-top:10px}
   .hidden{display:none !important}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Senori","alternateName":"Murshid Store","url":"https://senori.isroot.in/"}</script>
 </head>
 <body>
 <div id="splash" aria-hidden="true">
@@ -184,15 +216,146 @@ const SB = "https://xiwlocrclppinyzlboip.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhpd2xvY3JjbHBwaW55emxib2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTQ5NzksImV4cCI6MjExMTEzMDk3OX0.qgzWOvdwlJe3ivHe_QS2FHXewMpVFKIKLIKdMF0t_Ng";
 const H = { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" };
 
-const CATEGORIES = ["All","Games","Social","Tools","Video","Music","Education","Business","Health","Shopping","Illegal","Other"];
-const CAT_COLORS = {All:"#FF6B4A",Games:"#22C55E",Social:"#3B82F6",Tools:"#F59E0B",Video:"#A855F7",Music:"#EC4899",Education:"#14B8A6",Business:"#6366F1",Health:"#84CC16",Shopping:"#F97316",Illegal:"#EF4444",Other:"#64748B"};
+/* Firebase Auth — same project as the Murshid Store APK (murshid-store),
+   so an account registered in the APK signs in here with the same
+   email + password, or with Google (account chooser). Downloads need
+   no login; only writing a review needs sign-in. */
+const FB_CONFIG = {
+  apiKey: "AIzaSyBM5S2AcT7eq2QrzCpdqM3Lu7azuXBBItc",
+  authDomain: "murshid-store.firebaseapp.com",
+  projectId: "murshid-store",
+  storageBucket: "murshid-store.firebasestorage.app",
+  messagingSenderId: "1012896791457",
+  appId: "1:1012896791457:web:de14c85a763ff76eb069e0"
+};
+let fbUser = null;
+let authMode = "in";
+let authMsg = "";
+let authMsgOk = false;
+function fbReady(){ return (typeof firebase !== "undefined") && firebase.apps && firebase.apps.length; }
+try {
+  firebase.initializeApp(FB_CONFIG);
+  firebase.auth().onAuthStateChanged(u => { fbUser = u; if (view === "tabs" && tab === "profile") render(); });
+} catch(e) { /* Firebase CDN blocked: auth stays unavailable, store still works */ }
+function authErrText(e){
+  const c = (e && e.code) || "";
+  if (c === "auth/invalid-email") return "Please enter a valid email address.";
+  if (c === "auth/user-not-found") return "No account with this email — please register first.";
+  if (c === "auth/wrong-password" || c === "auth/invalid-credential") return "Wrong email or password.";
+  if (c === "auth/email-already-in-use") return "This email is already registered — please sign in.";
+  if (c === "auth/weak-password") return "Password must be at least 6 characters.";
+  if (c === "auth/popup-closed-by-user") return "Google sign-in was closed.";
+  if (c === "auth/popup-blocked") return "Please allow popups for Google sign-in.";
+  if (c === "auth/network-request-failed") return "Network error — please check your connection.";
+  return (e && e.message) || "Something went wrong. Please try again.";
+}
+async function fbPersist(){
+  const keep = document.getElementById("authKeep");
+  const p = (keep && !keep.checked) ? firebase.auth.Auth.Persistence.SESSION : firebase.auth.Auth.Persistence.LOCAL;
+  await firebase.auth().setPersistence(p);
+}
+async function doEmailAuth(){
+  if (!fbReady()) { authMsg = "Sign-in is unavailable right now — please check your connection and retry."; authMsgOk = false; render(); return; }
+  const em = document.getElementById("authEmail");
+  const pw = document.getElementById("authPass");
+  const nm = document.getElementById("authName");
+  authMsg = ""; authMsgOk = false;
+  const email = em ? em.value.trim() : "";
+  const pass = pw ? pw.value : "";
+  if (!email || !pass) { authMsg = "Please enter your email and password."; render(); return; }
+  try {
+    await fbPersist();
+    if (authMode === "up") {
+      const name = nm ? nm.value.trim() : "";
+      if (!name) { authMsg = "Please write your name first."; render(); return; }
+      const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+      await cred.user.updateProfile({ displayName: name });
+    } else {
+      await firebase.auth().signInWithEmailAndPassword(email, pass);
+    }
+  } catch(e) { authMsg = authErrText(e); render(); }
+}
+async function doGoogleAuth(){
+  if (!fbReady()) { authMsg = "Sign-in is unavailable right now — please check your connection and retry."; authMsgOk = false; render(); return; }
+  authMsg = ""; authMsgOk = false;
+  try {
+    await fbPersist();
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    await firebase.auth().signInWithPopup(provider);
+  } catch(e) { authMsg = authErrText(e); render(); }
+}
+async function doForgot(){
+  if (!fbReady()) { authMsg = "Sign-in is unavailable right now — please check your connection and retry."; authMsgOk = false; render(); return; }
+  const em = document.getElementById("authEmail");
+  const email = em ? em.value.trim() : "";
+  if (!email) { authMsg = "Enter your email above first, then tap Forgot password."; authMsgOk = false; render(); return; }
+  try {
+    await firebase.auth().sendPasswordResetEmail(email);
+    authMsg = "Reset link sent to " + email + "."; authMsgOk = true; render();
+  } catch(e) { authMsg = authErrText(e); authMsgOk = false; render(); }
+}
+async function doSignOut(){
+  try { await firebase.auth().signOut(); } catch(e) { toast(authErrText(e)); }
+  render();
+}
+function authCardHtml(){
+  if (fbUser) {
+    const photo = fbUser.photoURL
+      ? '<img src="' + esc(fbUser.photoURL) + '" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover">'
+      : '<svg width="34" height="34" viewBox="0 0 24 24" fill="#241D4D"><path d="M12,12 C14.2,12 16,10.2 16,8 C16,5.8 14.2,4 12,4 C9.8,4 8,5.8 8,8 C8,10.2 9.8,12 12,12 Z M12,13 C8.7,13 4,14.7 4,18 L4,20 L20,20 L20,18 C20,14.7 15.3,13 12,13 Z"/></svg>';
+    const name = esc(fbUser.displayName || fbUser.email || "Signed in");
+    return '<div class="acctcard"><span class="avatar">' + photo + '</span>'
+      + '<div style="min-width:0;padding-left:12px;flex:1"><p class="fd" style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</p>'
+      + '<p class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(fbUser.email || "") + '</p></div></div>'
+      + '<button class="widebtn fd press" id="btnSignOut">Sign out</button>'
+      + '<p class="sub" style="margin-top:10px">Signed in with the same account as the Murshid Store app. No login is needed to download.</p>';
+  }
+  const glogo = '<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.5 6.1 29.5 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>';
+  return '<div class="acctcard" style="display:block">'
+    + '<p class="fd" style="font-size:16px;font-weight:700">Account</p>'
+    + '<p class="sub">Sign in with the same account as the Murshid Store app — or register here, then use it in the app too. No login is needed to download.</p>'
+    + '<div class="authtabs"><button class="authtab fd press' + (authMode === "in" ? " on" : "") + '" id="tabSignIn">Sign In</button>'
+    + '<button class="authtab fd press' + (authMode === "up" ? " on" : "") + '" id="tabRegister">Register</button></div>'
+    + (authMode === "up" ? '<label class="hidden" for="authName">Your name</label><input class="authfield" id="authName" placeholder="Your name" autocomplete="name" maxlength="60">' : "")
+    + '<label class="hidden" for="authEmail">Email</label><input class="authfield" id="authEmail" type="email" placeholder="Email" autocomplete="email">'
+    + '<label class="hidden" for="authPass">Password</label><input class="authfield" id="authPass" type="password" placeholder="Password (6+ characters)" autocomplete="' + (authMode === "up" ? "new-password" : "current-password") + '">'
+    + '<div class="authrow"><label class="checkrow"><input type="checkbox" id="authKeep" checked> Keep me signed in</label>'
+    + (authMode === "in" ? '<button class="authlink press" id="btnForgot">Forgot password?</button>' : "") + '</div>'
+    + (authMsg ? '<p class="' + (authMsgOk ? "authok" : "autherr") + '">' + esc(authMsg) + '</p>' : "")
+    + '<button class="widebtn fd press" id="btnEmailAuth">' + (authMode === "up" ? "Create account" : "Sign In") + '</button>'
+    + '<div class="divider">or</div>'
+    + '<button class="googlebtn fd press" id="btnGoogleAuth">' + glogo + '<span>Sign in with Google</span></button>'
+    + '</div>';
+}
+function bindAuth(){
+  const tIn = document.getElementById("tabSignIn");
+  if (tIn) tIn.addEventListener("click", () => { authMode = "in"; authMsg = ""; render(); });
+  const tUp = document.getElementById("tabRegister");
+  if (tUp) tUp.addEventListener("click", () => { authMode = "up"; authMsg = ""; render(); });
+  const be = document.getElementById("btnEmailAuth");
+  if (be) be.addEventListener("click", doEmailAuth);
+  const bg = document.getElementById("btnGoogleAuth");
+  if (bg) bg.addEventListener("click", doGoogleAuth);
+  const bf = document.getElementById("btnForgot");
+  if (bf) bf.addEventListener("click", doForgot);
+  const bo = document.getElementById("btnSignOut");
+  if (bo) bo.addEventListener("click", doSignOut);
+  const ep = document.getElementById("authPass");
+  if (ep) ep.addEventListener("keydown", e => { if (e.key === "Enter") doEmailAuth(); });
+}
+
+
+const CATEGORIES = ["All","Games","Social","Tools","Video","Music","Education","Business","Health","Shopping","Other"];
+function catName(c){ return c === "Illegal" ? "Tools" : (c || "Other"); } // maps the old category name to Tools for display
+const CAT_COLORS = {All:"#FF6B4A",Games:"#22C55E",Social:"#3B82F6",Tools:"#F59E0B",Video:"#A855F7",Music:"#EC4899",Education:"#14B8A6",Business:"#6366F1",Health:"#84CC16",Shopping:"#F97316",Other:"#64748B"};
 const REPORT_REASONS = ["Broken APK — APK is broken / won't install","Wrong app","Harmful — harmful / suspicious","Other — another problem"];
 const INSTALL_NOTE = "When the download finishes, open the APK file to install it. No login needed.";
 const STORE_POLICY = "Murshid Store Policy\n\n1. Anyone can browse and download apps from this store with no login at all.\n2. A downloaded APK installs through Android's own system installer — Play Protect scans it normally. Play Protect must NOT be turned off, and nobody will ask you to turn it off.\n3. Writing a review shows your name next to it.\n4. Every app's own Privacy Policy is shown on its details page — read it before downloading.\n5. The Admin is responsible for the apps they upload. Do not download apps that look suspicious.";
 const NAV = [
   { id:"home", label:"Home", path:"M3,10.5 L12,3 L21,10.5 M5,9.5 V21 H19 V9.5 M9,21 V14 H15,21" },
   { id:"games", label:"Games", path:"M6,8 H18 C20.5,8 22,10 21,13 L19.5,18 C19,20 17,20 15.5,18 L13,16 H11 L8.5,18 C7,20 5,20 4.5,18 L3,13 C2,10 3.5,8 6,8 Z M7,11 V15 M5,13 H9" },
-  { id:"illegal", label:"Illegal", path:"M4,3 H14 L21,10 L10,22 L3,15 V3 Z M8,7 H12 V11 H8 Z M7,17 L15,9" },
+  { id:"tools", label:"Tools", path:"M4,3 H14 L21,10 L10,22 L3,15 V3 Z M8,7 H12 V11 H8 Z M7,17 L15,9" },
   { id:"profile", label:"Profile", path:"M16,7 A4,4 0 1,1 8,7 A4,4 0 1,1 16,7 Z M4,21 C4,16 7,13 12,13 C17,13 20,16 20,21" }
 ];
 
@@ -275,7 +438,7 @@ function cardHtml(app){
   return '<div class="card press" role="button" tabindex="0" data-open="' + app.id + '" aria-label="Open ' + esc(app.name) + '">'
     + iconHtml(app, 64)
     + '<div class="mid"><p class="name fd">' + esc(app.name) + '</p>'
-    + '<p class="meta">' + esc(app.category) + ' • v' + esc(app.version) + ' • ' + esc(app.size_text) + '</p>'
+    + '<p class="meta">' + esc(catName(app.category)) + ' • v' + esc(app.version) + ' • ' + esc(app.size_text) + '</p>'
     + '<p class="rating">' + ratingLine(app, false) + '</p>'
     + '<p class="dls">' + downloadsText(app.download_count) + '</p></div>'
     + '<button class="dlbtn fd press" data-dl="' + app.id + '" aria-label="Download ' + esc(app.name) + '">Download</button></div>';
@@ -302,7 +465,7 @@ function topHtml(){
 function renderHome(){
   const trending = [...apps].sort((a, b) => b.rating_count - a.rating_count || (b.rating_avg || 0) - (a.rating_avg || 0)).slice(0, 6);
   const newest = [...apps].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 6);
-  const list = chip === "All" ? apps : apps.filter(a => a.category === chip);
+  const list = chip === "All" ? apps : apps.filter(a => a.category === chip || (chip === "Tools" && a.category === "Illegal"));
   const chips = CATEGORIES.map(c => {
     const col = CAT_COLORS[c] || "#64748B", sel = chip === c;
     return '<button class="chip fd press" data-chip="' + esc(c) + '" role="tab" aria-selected="' + sel + '" aria-label="Category ' + esc(c) + '" style="background:' + (sel ? col : "var(--card)") + ';color:' + (sel ? "#fff" : col) + ';border-color:' + col + '">' + esc(c) + '</button>';
@@ -316,7 +479,7 @@ function renderHome(){
   bindCommon();
 }
 function renderCategory(cat, title, subtitle){
-  const list = apps.filter(a => a.category === cat);
+  const list = apps.filter(a => a.category === cat || (cat === "Tools" && a.category === "Illegal"));
   $view.innerHTML = '<div class="wrap">' + topHtml()
     + '<main style="padding:8px 4px 0"><h2 class="page fd">' + title + '</h2><p class="sub">' + subtitle + '</p>'
     + '<div style="margin-top:8px">' + listHtml(list) + '</div></main></div>';
@@ -339,9 +502,7 @@ function renderProfile(){
     }).join("") + '<button class="clearbtn fd press" id="btnClearHistory">Clear History</button>';
   }
   $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0"><h2 class="page fd">Account</h2>'
-    + '<div class="acctcard"><span class="avatar"><svg width="34" height="34" viewBox="0 0 24 24" fill="#241D4D"><path d="M12,12 C14.2,12 16,10.2 16,8 C16,5.8 14.2,4 12,4 C9.8,4 8,5.8 8,8 C8,10.2 9.8,12 12,12 Z M12,13 C8.7,13 4,14.7 4,18 L4,20 L20,20 L20,18 C20,14.7 15.3,13 12,13 Z"/></svg></span>'
-    + '<div style="min-width:0;padding-left:12px"><p class="fd" style="font-size:16px;font-weight:700">Not signed in</p>'
-    + '<p class="sub">Not signed in — no login is needed to download.</p></div></div>'
+    + authCardHtml()
     + '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Favourites</h3><div style="margin-top:8px">'
     + (favApps.length ? favApps.map(cardHtml).join("") : '<p class="sub">No favourites yet — tap Favourite on an app\'s page.</p>') + '</div>'
     + '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Download History</h3>'
@@ -350,6 +511,7 @@ function renderProfile(){
     + '<button class="widebtn fd press" id="btnPolicy">Policy</button>'
     + '<p class="version">Murshid Store — Web</p></main></div>';
   bindCommon();
+  bindAuth();
   const ch = document.getElementById("btnClearHistory");
   if (ch) ch.addEventListener("click", () => { setHistory([]); render(); });
   document.getElementById("btnPolicy").addEventListener("click", () => { view = "policy"; render(); window.scrollTo(0, 0); });
@@ -373,7 +535,7 @@ function renderSearch(){
     const q = input.value.trim().toLowerCase();
     const box = document.getElementById("searchResults");
     if (!q) { box.innerHTML = '<p class="empty">Type an app name to search the store.</p>'; return; }
-    const res = apps.filter(a => a.name.toLowerCase().includes(q) || a.category.toLowerCase().includes(q) || a.package_name.toLowerCase().includes(q));
+    const res = apps.filter(a => a.name.toLowerCase().includes(q) || catName(a.category).toLowerCase().includes(q) || a.package_name.toLowerCase().includes(q));
     box.innerHTML = res.length ? res.map(cardHtml).join("") : '<p class="empty">No apps match your search.</p>';
     bindCards(box);
   });
@@ -424,14 +586,14 @@ function renderDetail(){
     + '<button class="backbtn fd press" id="btnBack">← Back</button>'
     + '<div class="dhead">' + iconHtml(a, 72)
     + '<div class="mid"><h1 class="fd">' + esc(a.name) + '</h1>'
-    + '<p class="dmeta">' + esc(a.category) + ' • v' + esc(a.version) + ' • ' + esc(a.size_text) + ' • ' + esc(a.package_name) + '</p>'
+    + '<p class="dmeta">' + esc(catName(a.category)) + ' • v' + esc(a.version) + ' • ' + esc(a.size_text) + ' • ' + esc(a.package_name) + '</p>'
     + '<p class="drating">' + ratingHead + '</p></div>'
     + '<div class="menuwrap"><button class="iconbtn press" id="btnMore" aria-label="More options" style="color:var(--text)">'
     + '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>'
     + '<div class="menu hidden" id="moreMenu"><button class="fd press" id="btnShare">Share</button></div></div></div>'
     + '<div class="stats"><div class="stat"><p class="top">' + ratingTop + '</p><p class="bot">' + ratingBot + '</p></div><div class="vdiv"></div>'
     + '<div class="stat"><p class="top">' + esc(a.size_text || "—") + '</p><p class="bot">Size</p></div><div class="vdiv"></div>'
-    + '<div class="stat"><p class="top">' + esc(a.category) + '</p><p class="bot">Category</p></div><div class="vdiv"></div>'
+    + '<div class="stat"><p class="top">' + esc(catName(a.category)) + '</p><p class="bot">Category</p></div><div class="vdiv"></div>'
     + '<div class="stat"><p class="top">⬇ ' + a.download_count + '</p><p class="bot">Downloads</p></div></div>'
     + '<button class="bigdl fd press" id="btnDownload">Download</button>'
     + '<div class="rowbtns"><button class="fd press" id="btnFav">' + (isFav ? "Remove favourite" : "Favourite") + '</button>'
@@ -449,6 +611,8 @@ function renderDetail(){
     + (others.length ? '<h3 class="dsec fd">More apps</h3><div style="margin-top:8px">' + others.map(cardHtml).join("") + '</div>' : "")
     + '</div></div>';
   bindCards($view);
+  const rn = document.getElementById("reviewName");
+  if (rn && fbUser && fbUser.displayName) rn.value = fbUser.displayName;
   document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
   document.getElementById("btnMore").addEventListener("click", () => document.getElementById("moreMenu").classList.toggle("hidden"));
   document.getElementById("btnShare").addEventListener("click", async () => {
@@ -469,14 +633,15 @@ function renderDetail(){
   }));
   document.getElementById("btnReview").addEventListener("click", async () => {
     const err = document.getElementById("reviewErr");
-    const name = document.getElementById("reviewName").value.trim();
+    if (!fbUser) { fail("Please sign in from the Account tab to write a review."); setTimeout(() => { tab = "profile"; view = "tabs"; render(); window.scrollTo(0, 0); }, 900); return; }
+    const name = (fbUser.displayName || document.getElementById("reviewName").value.trim());
     const text = document.getElementById("reviewText").value.trim();
     const fail = m => { err.textContent = m; err.classList.remove("hidden"); };
     if (myRating === 0) return fail("Please tap a star rating first.");
     if (!name) return fail("Please write your name first.");
     err.classList.add("hidden");
     try {
-      await sb("store_reviews", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ app_package: a.package_name, user_name: name, user_email: "", user_photo: "", rating: myRating, review_text: text }) });
+      await sb("store_reviews", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ app_package: a.package_name, user_name: name, user_email: fbUser.email || "", user_photo: fbUser.photoURL || "", rating: myRating, review_text: text }) });
       toast("Review submitted.");
       await loadApps();
       const fresh = apps.find(x => x.id === a.id);
@@ -572,7 +737,7 @@ function render(){
   renderNav();
   if (tab === "home") renderHome();
   else if (tab === "games") renderCategory("Games", "Games", "All apps in the Games category");
-  else if (tab === "illegal") renderCategory("Illegal", "Illegal", "Apps in this category — whatever the Admin uploads shows here.");
+  else if (tab === "tools") renderCategory("Tools", "Tools", "All apps in the Tools category");
   else renderProfile();
 }
 
