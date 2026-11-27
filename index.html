@@ -185,6 +185,11 @@
   .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--divider)}
   .autherr{font-size:13px;color:var(--accent);margin-top:10px}
   .authok{font-size:13px;color:#22C55E;margin-top:10px}
+  /* footer: policy / about / contact */
+  .footer{margin-top:28px;padding:18px 4px 8px;border-top:1px solid var(--divider);text-align:center}
+  .flink{font-size:14px;font-weight:600;color:var(--violet);padding:6px 4px}
+  .fsep{color:var(--muted);margin:0 6px}
+  .fcopy{margin-top:10px;font-size:12px;color:var(--muted)}
   .hidden{display:none !important}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -475,14 +480,14 @@ function renderHome(){
     + '<h2 class="sec fd">New Apps</h2><div class="rail">' + newest.map(compactHtml).join("") + '</div>'
     + '<h2 class="sec fd">All Apps</h2><div class="chips" role="tablist" aria-label="Categories">' + chips + '</div>'
     + '<div style="margin-top:8px">' + listHtml(list) + '</div>'
-    + '<p class="note">' + INSTALL_NOTE + '</p></main></div>';
+    + '<p class="note">' + INSTALL_NOTE + '</p>' + footerHtml() + '</main></div>';
   bindCommon();
 }
 function renderCategory(cat, title, subtitle){
   const list = apps.filter(a => a.category === cat || (cat === "Tools" && a.category === "Illegal"));
   $view.innerHTML = '<div class="wrap">' + topHtml()
     + '<main style="padding:8px 4px 0"><h2 class="page fd">' + title + '</h2><p class="sub">' + subtitle + '</p>'
-    + '<div style="margin-top:8px">' + listHtml(list) + '</div></main></div>';
+    + '<div style="margin-top:8px">' + listHtml(list) + '</div>' + footerHtml() + '</main></div>';
   bindCommon();
 }
 function renderProfile(){
@@ -509,12 +514,32 @@ function renderProfile(){
     + '<p style="font-size:12px;color:var(--muted)">Saved on this device — never uploaded anywhere.</p>'
     + '<div style="margin-top:8px">' + histHtml + '</div>'
     + '<button class="widebtn fd press" id="btnPolicy">Policy</button>'
-    + '<p class="version">Murshid Store — Web</p></main></div>';
+    + '<p class="version">Murshid Store — Web</p>' + footerHtml() + '</main></div>';
   bindCommon();
   bindAuth();
   const ch = document.getElementById("btnClearHistory");
   if (ch) ch.addEventListener("click", () => { setHistory([]); render(); });
   document.getElementById("btnPolicy").addEventListener("click", () => { view = "policy"; render(); window.scrollTo(0, 0); });
+}
+function footerHtml(){
+  return '<footer class="footer"><button class="flink press" data-page="policy">Privacy Policy</button><span class="fsep">•</span>'
+    + '<button class="flink press" data-page="about">About</button><span class="fsep">•</span>'
+    + '<button class="flink press" data-page="contact">Contact</button>'
+    + '<p class="fcopy">Senori — Murshid Store • Free Android apps &amp; games</p></footer>';
+}
+const ABOUT_TEXT = "Senori (Murshid Store) is a free Android app store. Browse and download apps and games as APK files — no login is needed to download. Apps are uploaded by the store admin; every app’s own Privacy Policy is shown on its detail page. Reviews are written by signed-in users and show their name next to the review.";
+const CONTACT_TEXT = "Questions, reports or takedown requests — email dbibi698@gmail.com. To report a single app, you can also use the Report button on that app’s page.";
+function renderAbout(){
+  $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
+    + '<button class="backbtn fd press" id="btnBack">← Back</button>'
+    + '<h2 class="page fd">About</h2><p class="dbody" style="margin-top:12px">' + esc(ABOUT_TEXT) + '</p></main></div>';
+  document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
+}
+function renderContact(){
+  $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
+    + '<button class="backbtn fd press" id="btnBack">← Back</button>'
+    + '<h2 class="page fd">Contact</h2><p class="dbody" style="margin-top:12px">' + esc(CONTACT_TEXT) + '</p></main></div>';
+  document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
 }
 function renderPolicy(){
   $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
@@ -609,7 +634,7 @@ function renderDetail(){
     + '<p class="err hidden" id="reviewErr"></p>'
     + '<button class="bigdl fd press" id="btnReview" style="margin-top:8px">Submit review</button>'
     + (others.length ? '<h3 class="dsec fd">More apps</h3><div style="margin-top:8px">' + others.map(cardHtml).join("") + '</div>' : "")
-    + '</div></div>';
+    + footerHtml() + '</div></div>';
   bindCards($view);
   const rn = document.getElementById("reviewName");
   if (rn && fbUser && fbUser.displayName) rn.value = fbUser.displayName;
@@ -710,6 +735,7 @@ function bindCommon(){
   const r = document.getElementById("btnRefresh");
   if (r) r.addEventListener("click", async () => { try { await loadApps(); render(); } catch(e) { toast(e.message); } });
   $view.querySelectorAll("[data-chip]").forEach(el => el.addEventListener("click", () => { chip = el.getAttribute("data-chip"); render(); }));
+  $view.querySelectorAll("[data-page]").forEach(el => el.addEventListener("click", () => { view = el.getAttribute("data-page"); render(); window.scrollTo(0, 0); }));
 }
 
 function renderNav(){
@@ -734,6 +760,8 @@ function render(){
   if (view === "search") return renderSearch();
   if (view === "detail") return renderDetail();
   if (view === "policy") return renderPolicy();
+  if (view === "about") return renderAbout();
+  if (view === "contact") return renderContact();
   renderNav();
   if (tab === "home") renderHome();
   else if (tab === "games") renderCategory("Games", "Games", "All apps in the Games category");
