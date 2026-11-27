@@ -185,6 +185,17 @@
   .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--divider)}
   .autherr{font-size:13px;color:var(--accent);margin-top:10px}
   .authok{font-size:13px;color:#22C55E;margin-top:10px}
+  /* in-page download manager */
+  .dlbar{position:fixed;left:12px;right:12px;bottom:86px;z-index:70;background:var(--card);border:1px solid var(--divider);border-radius:16px;padding:12px;box-shadow:0 10px 28px rgba(0,0,0,.22)}
+  .dlbar[hidden]{display:none}
+  .dlrow{display:flex;align-items:center;gap:10px}
+  .dlname{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dlmeta{font-size:12px;color:var(--muted);margin-top:2px}
+  .dltrack{height:8px;border-radius:99px;background:var(--divider);overflow:hidden;margin-top:8px}
+  .dlfill{height:100%;width:0%;background:var(--violet);border-radius:99px;transition:width .15s linear}
+  .dlfill.indet{width:40%!important;animation:dlslide 1.1s ease-in-out infinite alternate}
+  @keyframes dlslide{from{margin-left:0}to{margin-left:60%}}
+  .dlcancel{flex:0 0 auto;font-size:13px;font-weight:700;color:#fff;background:#ef4444;border-radius:99px;padding:7px 12px}
   /* footer: policy / about / contact */
   .footer{margin-top:28px;padding:18px 4px 8px;border-top:1px solid var(--divider);text-align:center}
   .flink{font-size:14px;font-weight:600;color:var(--violet);padding:6px 4px}
@@ -211,6 +222,11 @@
   <div class="navrow" id="navrow"></div>
 </nav>
 <div id="toast" role="status"></div>
+<div class="dlbar" id="dlbar" hidden>
+  <div class="dlrow"><div style="flex:1;min-width:0"><p class="dlname fd" id="dlName"></p><p class="dlmeta" id="dlMeta"></p></div>
+  <button class="dlcancel fd press" id="dlCancel">Cancel</button></div>
+  <div class="dltrack"><div class="dlfill" id="dlFill"></div></div>
+</div>
 <div id="dialog"></div>
 
 <script>
@@ -702,16 +718,90 @@ function toggleFav(a){
   toast(has ? "Removed from favourites." : "Added to favourites.");
 }
 
-function handleDownload(a){
-  if (!a.apk_url) { toast("No download link for this app yet."); return; }
+let dlAbort = null;
+let dlApp = null;
+function fmtMB(b){ return (b / 1048576).toFixed(1) + " MB"; }
+function fileNameFor(a){
+  try {
+    const last = decodeURIComponent(new URL(a.apk_url).pathname.split("/").pop() || "");
+    if (/\.apk$/i.test(last)) return last;
+  } catch(e){}
+  return slugify(a.name || "app") + ".apk";
+}
+function dlRecord(a){
   sb("store_downloads", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ app_package: a.package_name, app_name: a.name, user_email: "", user_name: "Web visitor" }) }).catch(() => {});
   const hist = getHistory().filter(h => h.pkg !== a.package_name);
   hist.unshift({ pkg: a.package_name, name: a.name, icon_url: a.icon_url, at: new Date().toISOString() });
   setHistory(hist.slice(0, 50));
+}
+function dlShow(a){
+  dlApp = a;
+  document.getElementById("dlName").textContent = "Downloading " + a.name + "…";
+  document.getElementById("dlMeta").textContent = "Starting…";
+  const f = document.getElementById("dlFill");
+  f.style.width = "0%"; f.classList.remove("indet");
+  document.getElementById("dlbar").hidden = false;
+}
+function dlUpdate(done, total){
+  const meta = document.getElementById("dlMeta");
+  const f = document.getElementById("dlFill");
+  if (total > 0) {
+    const pct = Math.min(100, Math.round(done / total * 100));
+    meta.textContent = fmtMB(done) + " / " + fmtMB(total) + "  •  " + pct + "%";
+    f.style.width = pct + "%"; f.classList.remove("indet");
+  } else {
+    meta.textContent = fmtMB(done) + " downloaded…";
+    f.classList.add("indet");
+  }
+}
+function dlHide(){ document.getElementById("dlbar").hidden = true; dlApp = null; dlAbort = null; }
+function dlCancel(){ if (dlAbort) dlAbort.abort(); }
+function dlFallback(a){
   const link = document.createElement("a");
   link.href = a.apk_url; link.rel = "noopener";
   document.body.appendChild(link); link.click(); link.remove();
-  toast("Downloading " + a.name + "…");
+}
+async function handleDownload(a){
+  if (!a.apk_url) { toast("No download link for this app yet."); return; }
+  if (dlAbort) { toast("A download is already running — please wait or cancel it."); return; }
+  dlShow(a);
+  const ctrl = new AbortController(); dlAbort = ctrl;
+  const chunks = []; let done = 0, total = 0;
+  try {
+    const res = await fetch(a.apk_url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    if (!res.body) throw new Error("stream unsupported");
+    total = Number(res.headers.get("Content-Length") || 0) || 0;
+    const reader = res.body.getReader();
+    let lastUi = 0;
+    for (;;) {
+      const r = await reader.read();
+      if (r.done) break;
+      chunks.push(r.value); done += r.value.length;
+      const now = Date.now();
+      if (now - lastUi > 120) { dlUpdate(done, total); lastUi = now; }
+    }
+    dlUpdate(done, total);
+    const blob = new Blob(chunks, { type: "application/vnd.android.package-archive" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = fileNameFor(a);
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    dlRecord(a);
+    toast("Downloaded " + a.name + ".");
+    if (view === "tabs" && tab === "profile") render();
+  } catch (e) {
+    if (e && e.name === "AbortError") {
+      toast("Download cancelled.");
+    } else {
+      toast("In-page download failed — opening the browser download instead.");
+      dlFallback(a);
+      dlRecord(a);
+    }
+  } finally {
+    dlHide();
+  }
 }
 
 function bindCards(root){
@@ -770,6 +860,7 @@ function render(){
 }
 
 (async function init(){
+  document.getElementById("dlCancel").addEventListener("click", dlCancel);
   setTimeout(() => document.getElementById("splash").classList.add("gone"), 1500);
   setTimeout(() => document.getElementById("splash").remove(), 2100);
   $view.innerHTML = '<div class="wrap"><p class="loading">Loading…</p></div>';
