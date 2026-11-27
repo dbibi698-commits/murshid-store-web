@@ -538,8 +538,15 @@ function renderProfile(){
                : '<div class="histrow">' + inner + '</div>';
     }).join("") + '<button class="clearbtn fd press" id="btnClearHistory">Clear History</button>';
   }
+  const storeApp = apps.find(a => a.id === 2);
+  const storeCard = storeApp
+    ? '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Senori App</h3>'
+    + '<p class="sub" style="margin-top:4px">এটা হলো Senori অ্যাপ ওয়েব এর APK টা</p>'
+    + '<div style="margin-top:8px">' + cardHtml(storeApp) + '</div>'
+    : "";
   $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0"><h2 class="page fd">Account</h2>'
     + authCardHtml()
+    + storeCard
     + '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Favourites</h3><div style="margin-top:8px">'
     + (favApps.length ? favApps.map(cardHtml).join("") : '<p class="sub">No favourites yet — tap Favourite on an app\'s page.</p>') + '</div>'
     + '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Download History</h3>'
