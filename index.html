@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Murshid Store</title>
+<meta name="description" content="Murshid Store — browse and download apps. No login needed.">
+<link rel="icon" href="app_logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Murshid Store — static GitHub Pages build.
+     Same screens as the Android app (v1.1.5 ULTRA): colors, fonts and
+     layout copied from the APK. Reads the same Supabase database
+     (store_apps / store_reviews / store_downloads) directly from the
+     browser with the public anon key — the same key the APK ships. */
+  :root{
+    --bg:#12101E; --aurora:#090817; --card:#201D33; --text:#F4F2FA;
+    --muted:#B3ABC9; --hint:#C9C2DC; --divider:#3A3454; --accent:#FF6B4A;
+    --amber:#FFC53D; --star:#F5A623; --gold:#FFD36A; --searchbg:#2A2642;
+    --violet:#A78BFA; --tile:#EDE7F6; --ink:#241D4D;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{background:var(--aurora)}
+  body{font-family:'Sora',system-ui,sans-serif;background:var(--aurora);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .fd{font-family:'Space Grotesk',system-ui,sans-serif}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;min-height:32px}
+  .press{transition:transform 120ms ease-out}
+  .press:active{transform:scale(.95)}
+  .press-tab{transition:transform 120ms ease-out}
+  .press-tab:active{transform:scale(.88)}
+  @media (prefers-reduced-motion: reduce){.press,.press-tab{transition:none}.press:active,.press-tab:active{transform:none}}
+
+  /* aurora orbs */
+  .orb{position:fixed;width:350px;height:350px;border-radius:50%;opacity:.55;pointer-events:none;filter:blur(60px);z-index:0}
+  .orb-p{background:radial-gradient(circle at 35% 35%,#8543FF 0%,rgba(133,67,255,0) 70%);top:-100px;left:-100px;animation:drift 9s ease-in-out infinite alternate}
+  .orb-b{background:radial-gradient(circle at 65% 65%,#2F6BFF 0%,rgba(47,107,255,0) 70%);bottom:-100px;right:-100px;animation:drift 9s ease-in-out infinite alternate-reverse}
+  @keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(30px,24px) scale(1.08)}}
+  @media (prefers-reduced-motion: reduce){.orb{animation:none}}
+
+  .wrap{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 12px 144px}
+  .topbar{display:flex;align-items:center;padding:12px 4px 4px}
+  .topbar img{width:40px;height:40px;border-radius:9px;background:var(--tile);object-fit:cover}
+  .topbar h1{font-size:20px;font-weight:700;margin-left:10px;flex:1}
+  .iconbtn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--violet);flex-shrink:0}
+
+  .searchpill{display:flex;align-items:center;height:52px;border-radius:28px;padding:0 16px;width:100%;text-align:left;
+    background:linear-gradient(45deg,#6D28D9 0%,#DB2777 52%,#FF6B4A 100%);border:1px solid #8A84A3;color:#fff;font-size:15px}
+  .searchpill span{margin-left:10px}
+  .searchrow{padding:8px 4px}
+
+  h2.sec{font-size:18px;font-weight:700;margin-top:14px}
+  h2.page{font-size:20px;font-weight:700}
+  .sub{font-size:13px;color:var(--muted)}
+  .rail{display:flex;overflow-x:auto;padding:6px 0 4px;scrollbar-width:none}
+  .rail::-webkit-scrollbar{display:none}
+  .chips{display:flex;overflow-x:auto;padding:8px 0 4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex-shrink:0;height:40px;border-radius:20px;padding:0 16px;margin-right:12px;font-size:14px;font-weight:600;white-space:nowrap;border:1px solid}
+
+  .card{background:var(--card);border-radius:16px;padding:12px;display:flex;align-items:center;margin-bottom:10px;width:100%;text-align:left}
+  .card .mid{flex:1;min-width:0;padding:0 12px}
+  .card .name{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rating{font-size:13px;color:var(--star)}
+  .dls{font-size:12px;color:var(--muted)}
+  .dlbtn{background:var(--accent);color:#fff;border-radius:26px;height:52px;padding:0 20px;font-size:16px;font-weight:600;flex-shrink:0}
+  .compact{width:148px;flex-shrink:0;margin-right:10px;background:var(--card);border-radius:16px;padding:10px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .compact .name{font-size:13px;font-weight:700;margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px;width:100%}
+  .compact .rating{font-size:12px;margin-top:2px}
+  .compact .dls{font-size:11px;margin-top:2px}
+  .compact .dlbtn{height:48px;border-radius:24px;padding:0 18px;font-size:15px;margin-top:8px}
+  .appicon{flex-shrink:0;object-fit:cover;background:var(--tile)}
+  .icontile{display:flex;align-items:center;justify-content:center;background:var(--tile);color:var(--ink);font-weight:700;flex-shrink:0}
+  .note{margin-top:12px;text-align:center;font-size:12px;color:var(--muted)}
+  .empty{padding:8px 4px;font-size:14px;color:var(--muted)}
+  .loading{padding:56px 0;text-align:center;font-size:14px;color:var(--muted)}
+
+  /* liquid glass nav */
+  .glassnav{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:696px;z-index:40;border-radius:27px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.22);box-shadow:0 16px 40px rgba(0,0,0,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    background:linear-gradient(120deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 45%),linear-gradient(120deg,rgba(133,67,255,.65) 0%,rgba(66,44,128,.64) 52%,rgba(35,32,88,.78) 100%)}
+  .glassnav .shine{position:absolute;top:0;bottom:0;width:200px;pointer-events:none;
+    background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.14) 50%,rgba(255,255,255,0) 70%);animation:shine 5.5s ease-in-out infinite}
+  @keyframes shine{0%,55%{transform:translateX(-110%)}90%,100%{transform:translateX(240%)}}
+  .indicator{position:absolute;top:7px;bottom:7px;border-radius:20px;border:1px solid rgba(255,255,255,.20);box-shadow:0 6px 18px rgba(0,0,0,.35);
+    background:linear-gradient(145deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.055) 55%,rgba(255,255,255,.08) 100%);transition:left 550ms cubic-bezier(.34,1.4,.4,1)}
+  .navrow{position:relative;display:flex;padding:7px}
+  .navtab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0;min-height:64px;color:rgba(240,230,255,.7)}
+  .navtab .lbl{font-size:12px;margin-top:8px;font-weight:500}
+  .navtab.active{color:var(--gold)}
+  .navtab.active .lbl{font-weight:700;text-shadow:0 0 15px rgba(255,211,106,.35)}
+  .navtab.active svg{filter:drop-shadow(0 0 6px rgba(255,211,106,.55))}
+  .dot{width:25px;height:3px;border-radius:99px;background:var(--gold);box-shadow:0 0 8px rgba(255,211,106,.8);margin-top:4px;visibility:hidden}
+  .navtab.active .dot{visibility:visible}
+
+  /* details */
+  .detailbg{background:var(--bg);min-height:100vh;position:relative;z-index:1}
+  .detailwrap{max-width:720px;margin:0 auto;padding:12px 16px 40px}
+  .backbtn{color:var(--violet);font-size:14px;font-weight:600;min-height:36px}
+  .dhead{display:flex;align-items:flex-start}
+  .dhead .mid{flex:1;min-width:0;padding:0 14px}
+  .dhead h1{font-size:20px;font-weight:700;word-wrap:break-word}
+  .dmeta{font-size:13px;color:var(--muted);word-wrap:break-word}
+  .drating{font-size:15px;color:var(--star)}
+  .stats{display:flex;align-items:center;margin-top:18px}
+  .stat{flex:1;text-align:center;padding:0 4px}
+  .stat .top{font-size:14px}
+  .stat .bot{font-size:14px;color:var(--muted)}
+  .vdiv{width:1px;height:36px;background:var(--divider);flex-shrink:0}
+  .bigdl{width:100%;height:52px;border-radius:26px;background:var(--accent);color:#fff;font-size:16px;font-weight:600;margin-top:18px}
+  .rowbtns{display:flex;gap:8px;margin-top:10px}
+  .rowbtns button{flex:1;height:52px;border-radius:26px;background:var(--searchbg);color:var(--text);font-size:15px;font-weight:600}
+  h3.dsec{font-size:16px;font-weight:700;margin-top:18px}
+  .dbody{font-size:14px;margin-top:4px;white-space:pre-wrap}
+  .policycard{background:var(--card);border-radius:12px;padding:12px;font-size:13px;margin-top:4px;white-space:pre-wrap}
+  .review{margin-bottom:12px}
+  .review .rname{font-size:14px;font-weight:600}
+  .review .rdate{font-size:12px;color:var(--muted)}
+  .review .rstars{font-size:14px;color:var(--star)}
+  .review .rtext{font-size:14px}
+  .starpick{font-size:32px;color:var(--star);padding:4px;min-width:44px;min-height:44px;line-height:1}
+  .field{width:100%;background:var(--searchbg);color:var(--text);border:1px solid var(--divider);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;margin-top:8px;outline:none}
+  .field::placeholder{color:var(--hint)}
+  .err{font-size:13px;color:var(--accent);margin-top:8px}
+  .menu{position:absolute;right:0;top:48px;width:176px;background:var(--card);border:1px solid var(--divider);border-radius:12px;padding:4px 0;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:30}
+  .menu button{display:block;width:100%;text-align:left;padding:0 16px;min-height:44px;font-size:15px;font-weight:500}
+  .menuwrap{position:relative;flex-shrink:0}
+
+  /* search */
+  .searchhead{display:flex;align-items:center;gap:8px}
+  .searchinput{flex:1;height:52px;background:var(--searchbg);border:1px solid var(--divider);border-radius:16px;color:var(--text);padding:0 16px;font-size:15px;font-family:inherit;outline:none}
+  .searchinput::placeholder{color:var(--hint)}
+
+  /* profile */
+  .acctcard{background:var(--card);border-radius:16px;padding:14px;display:flex;align-items:center;margin-top:12px}
+  .avatar{width:56px;height:56px;border-radius:50%;background:var(--tile);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .histrow{background:var(--card);border-radius:16px;padding:12px;display:flex;align-items:center;margin-bottom:10px;width:100%;text-align:left}
+  .widebtn{width:100%;height:56px;border-radius:26px;background:var(--searchbg);color:var(--text);font-size:16px;font-weight:600;margin-top:16px}
+  .clearbtn{height:52px;border-radius:26px;background:var(--searchbg);color:var(--text);font-size:15px;font-weight:600;padding:0 16px;margin-top:4px}
+  .version{margin-top:16px;text-align:center;font-size:12px;color:var(--muted)}
+
+  /* report dialog + toast + splash */
+  .scrim{position:fixed;inset:0;background:rgba(6,4,16,.7);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:16px}
+  @media(min-width:640px){.scrim{align-items:center}}
+  .dialog{background:var(--card);border-radius:20px;padding:16px;width:100%;max-width:420px}
+  .dialog h3{font-size:18px;font-weight:700}
+  .reason{display:block;width:100%;text-align:left;padding:12px 0;font-size:15px;border-bottom:1px solid var(--divider);min-height:48px}
+  #toast{position:fixed;bottom:128px;left:50%;transform:translateX(-50%);z-index:60;background:#2A2642;color:var(--text);border:1px solid var(--divider);
+    border-radius:12px;padding:10px 16px;font-size:14px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,.5);display:none;max-width:calc(100% - 32px);text-align:center}
+  #splash{position:fixed;inset:0;background:var(--bg);z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 450ms ease-in}
+  #splash.gone{opacity:0;visibility:hidden}
+  #splash img{width:120px;height:120px;border-radius:27px;object-fit:cover;animation:logoIn 800ms cubic-bezier(.34,1.56,.64,1) both}
+  @keyframes logoIn{0%{transform:scale(.6);opacity:0}60%{opacity:1}100%{transform:scale(1);opacity:1}}
+  #splash .sname{font-size:28px;font-weight:700;margin-top:20px;animation:nameIn 700ms ease-out 250ms both}
+  #splash .stag{font-size:13px;color:var(--muted);margin-top:6px;animation:nameIn 700ms ease-out 400ms both}
+  @keyframes nameIn{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<div id="splash" aria-hidden="true">
+  <img src="app_logo.png" alt="">
+  <p class="sname fd">Murshid Store</p>
+  <p class="stag">Your apps, one store</p>
+</div>
+<div class="orb orb-p" id="orbP"></div>
+<div class="orb orb-b" id="orbB"></div>
+<main id="view"></main>
+<nav class="glassnav" id="glassnav" aria-label="Store sections">
+  <div class="shine"></div>
+  <div class="indicator" id="indicator"></div>
+  <div class="navrow" id="navrow"></div>
+</nav>
+<div id="toast" role="status"></div>
+<div id="dialog"></div>
+
+<script>
+"use strict";
+/* Same database as the Murshid Store APK: Supabase project
+   xiwlocrclppinyzlboip, public anon key (the one shipped in the APK). */
+const SB = "https://xiwlocrclppinyzlboip.supabase.co";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhpd2xvY3JjbHBwaW55emxib2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTQ5NzksImV4cCI6MjExMTEzMDk3OX0.qgzWOvdwlJe3ivHe_QS2FHXewMpVFKIKLIKdMF0t_Ng";
+const H = { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" };
+
+const CATEGORIES = ["All","Games","Social","Tools","Video","Music","Education","Business","Health","Shopping","Illegal","Other"];
+const CAT_COLORS = {All:"#FF6B4A",Games:"#22C55E",Social:"#3B82F6",Tools:"#F59E0B",Video:"#A855F7",Music:"#EC4899",Education:"#14B8A6",Business:"#6366F1",Health:"#84CC16",Shopping:"#F97316",Illegal:"#EF4444",Other:"#64748B"};
+const REPORT_REASONS = ["Broken APK — APK is broken / won't install","Wrong app","Harmful — harmful / suspicious","Other — another problem"];
+const INSTALL_NOTE = "When the download finishes, open the APK file to install it. No login needed.";
+const STORE_POLICY = "Murshid Store Policy\n\n1. Anyone can browse and download apps from this store with no login at all.\n2. A downloaded APK installs through Android's own system installer — Play Protect scans it normally. Play Protect must NOT be turned off, and nobody will ask you to turn it off.\n3. Writing a review shows your name next to it.\n4. Every app's own Privacy Policy is shown on its details page — read it before downloading.\n5. The Admin is responsible for the apps they upload. Do not download apps that look suspicious.";
+const NAV = [
+  { id:"home", label:"Home", path:"M3,10.5 L12,3 L21,10.5 M5,9.5 V21 H19 V9.5 M9,21 V14 H15,21" },
+  { id:"games", label:"Games", path:"M6,8 H18 C20.5,8 22,10 21,13 L19.5,18 C19,20 17,20 15.5,18 L13,16 H11 L8.5,18 C7,20 5,20 4.5,18 L3,13 C2,10 3.5,8 6,8 Z M7,11 V15 M5,13 H9" },
+  { id:"illegal", label:"Illegal", path:"M4,3 H14 L21,10 L10,22 L3,15 V3 Z M8,7 H12 V11 H8 Z M7,17 L15,9" },
+  { id:"profile", label:"Profile", path:"M16,7 A4,4 0 1,1 8,7 A4,4 0 1,1 16,7 Z M4,21 C4,16 7,13 12,13 C17,13 20,16 20,21" }
+];
+
+let apps = [];
+let tab = "home";
+let chip = "All";
+let view = "tabs";           // tabs | search | detail | policy
+let detailApp = null;
+let detailReviews = [];
+let myRating = 0;
+let toastTimer = null;
+
+const $view = document.getElementById("view");
+const $nav = document.getElementById("glassnav");
+const $dialog = document.getElementById("dialog");
+
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function stars(r){ const f = Math.max(0, Math.min(5, Math.floor(r))); const half = r - f >= .5; let o = ""; for (let i = 1; i <= 5; i++) o += i <= f ? "★" : (i === f + 1 && half ? "⯨" : "☆"); return o; }
+function downloadsText(c){ return c <= 0 ? "⬇ No downloads yet" : c === 1 ? "⬇ 1 download" : "⬇ " + c + " downloads"; }
+function slugify(n){ const s = String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); return s || "app"; }
+function fmtDate(iso){ const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"}); }
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.style.display = "block"; if (toastTimer) clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = "none"; }, 2600); }
+
+function getFavs(){ try { const v = JSON.parse(localStorage.getItem("ms-favourites") || "[]"); return Array.isArray(v) ? v.filter(x => typeof x === "string") : []; } catch(e){ return []; } }
+function setFavs(f){ try { localStorage.setItem("ms-favourites", JSON.stringify(f)); } catch(e){} }
+function getHistory(){ try { const v = JSON.parse(localStorage.getItem("ms-history") || "[]"); return Array.isArray(v) ? v : []; } catch(e){ return []; } }
+function setHistory(h){ try { localStorage.setItem("ms-history", JSON.stringify(h)); } catch(e){} }
+
+async function sb(path, opts){
+  const res = await fetch(SB + "/rest/v1/" + path, Object.assign({ headers: H }, opts || {}));
+  if (!res.ok) throw new Error("The store database returned an error (HTTP " + res.status + "). Please try again.");
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+
+async function loadApps(){
+  const rows = await sb("store_apps?select=*&published=eq.true&order=created_at.desc");
+  const ratings = new Map(), downloads = new Map();
+  const [rev, dl] = await Promise.all([
+    sb("store_reviews?select=app_package,rating").catch(() => null),
+    sb("store_downloads?select=app_package&limit=5000").catch(() => null)
+  ]);
+  if (Array.isArray(rev)) {
+    const sums = new Map();
+    rev.forEach(r => { if (!r.app_package) return; const c = sums.get(r.app_package) || {s:0,n:0}; c.s += Number(r.rating) || 0; c.n++; sums.set(r.app_package, c); });
+    sums.forEach((v, k) => ratings.set(k, { avg: Math.round(v.s / v.n * 10) / 10, count: v.n }));
+  }
+  if (Array.isArray(dl)) dl.forEach(r => { if (r.app_package) downloads.set(r.app_package, (downloads.get(r.app_package) || 0) + 1); });
+  apps = (Array.isArray(rows) ? rows : []).map(r => {
+    const rt = ratings.get(r.package_name);
+    return {
+      id: r.id, name: r.name || "", package_name: r.package_name || "",
+      version: r.version || "", size_text: r.size_text || "",
+      category: r.category || "Other", description: r.description || "",
+      policy_text: r.policy_text || "", icon_url: r.icon_url || "",
+      apk_url: r.apk_url || "", created_at: r.created_at || "",
+      rating_avg: rt ? rt.avg : null, rating_count: rt ? rt.count : 0,
+      download_count: downloads.get(r.package_name) || 0
+    };
+  });
+}
+
+function iconHtml(app, size){
+  const r = Math.round(size * .22), fs = Math.round(size * .42);
+  if (app.icon_url) return '<img class="appicon" src="' + esc(app.icon_url) + '" alt="" width="' + size + '" height="' + size + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px" onerror="this.outerHTML=window.__tile(this.dataset.n,' + size + ')" data-n="' + esc(app.name) + '">';
+  return tileHtml(app.name, size);
+}
+function tileHtml(name, size){
+  const r = Math.round(size * .22), fs = Math.round(size * .42);
+  const ch = (String(name || "M").trim().charAt(0) || "M").toUpperCase();
+  return '<div class="icontile fd" aria-hidden="true" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + fs + 'px">' + esc(ch) + '</div>';
+}
+window.__tile = function(name, size){ return tileHtml(name, size); };
+
+function ratingLine(app, compact){
+  if (app.rating_count > 0 && app.rating_avg !== null) return stars(app.rating_avg) + " " + app.rating_avg.toFixed(1) + (compact ? "" : " (" + app.rating_count + ")");
+  return "☆☆☆☆☆ " + (compact ? "New" : "New app");
+}
+function cardHtml(app){
+  return '<div class="card press" role="button" tabindex="0" data-open="' + app.id + '" aria-label="Open ' + esc(app.name) + '">'
+    + iconHtml(app, 64)
+    + '<div class="mid"><p class="name fd">' + esc(app.name) + '</p>'
+    + '<p class="meta">' + esc(app.category) + ' • v' + esc(app.version) + ' • ' + esc(app.size_text) + '</p>'
+    + '<p class="rating">' + ratingLine(app, false) + '</p>'
+    + '<p class="dls">' + downloadsText(app.download_count) + '</p></div>'
+    + '<button class="dlbtn fd press" data-dl="' + app.id + '" aria-label="Download ' + esc(app.name) + '">Download</button></div>';
+}
+function compactHtml(app){
+  return '<div class="compact press" role="button" tabindex="0" data-open="' + app.id + '" aria-label="Open ' + esc(app.name) + '">'
+    + iconHtml(app, 64)
+    + '<p class="name fd">' + esc(app.name) + '</p>'
+    + '<p class="rating">' + ratingLine(app, true) + '</p>'
+    + '<p class="dls">' + downloadsText(app.download_count) + '</p>'
+    + '<button class="dlbtn fd press" data-dl="' + app.id + '" aria-label="Download ' + esc(app.name) + '">Download</button></div>';
+}
+function emptyHtml(){ return '<p class="empty">No apps yet. Upload the first app from the Admin app.</p>'; }
+function listHtml(list){ return list.length ? list.map(cardHtml).join("") : emptyHtml(); }
+
+function topHtml(){
+  return '<div class="topbar"><img src="app_logo.png" alt=""><h1 class="fd">Murshid Store</h1>'
+    + '<button class="iconbtn press" id="btnRefresh" aria-label="Refresh"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12 a9 9 0 1 1 -2.64 -6.36"/><path d="M21 3 v6 h-6"/></svg></button></div>'
+    + '<div class="searchrow"><button class="searchpill press" id="btnSearch" aria-label="Search apps by name">'
+    + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20 L16.5 16.5"/></svg>'
+    + '<span>Search apps by name…</span></button></div>';
+}
+
+function renderHome(){
+  const trending = [...apps].sort((a, b) => b.rating_count - a.rating_count || (b.rating_avg || 0) - (a.rating_avg || 0)).slice(0, 6);
+  const newest = [...apps].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 6);
+  const list = chip === "All" ? apps : apps.filter(a => a.category === chip);
+  const chips = CATEGORIES.map(c => {
+    const col = CAT_COLORS[c] || "#64748B", sel = chip === c;
+    return '<button class="chip fd press" data-chip="' + esc(c) + '" role="tab" aria-selected="' + sel + '" aria-label="Category ' + esc(c) + '" style="background:' + (sel ? col : "var(--card)") + ';color:' + (sel ? "#fff" : col) + ';border-color:' + col + '">' + esc(c) + '</button>';
+  }).join("");
+  $view.innerHTML = '<div class="wrap">' + topHtml()
+    + '<main style="padding:0 4px"><h2 class="sec fd">Trending</h2><div class="rail">' + trending.map(compactHtml).join("") + '</div>'
+    + '<h2 class="sec fd">New Apps</h2><div class="rail">' + newest.map(compactHtml).join("") + '</div>'
+    + '<h2 class="sec fd">All Apps</h2><div class="chips" role="tablist" aria-label="Categories">' + chips + '</div>'
+    + '<div style="margin-top:8px">' + listHtml(list) + '</div>'
+    + '<p class="note">' + INSTALL_NOTE + '</p></main></div>';
+  bindCommon();
+}
+function renderCategory(cat, title, subtitle){
+  const list = apps.filter(a => a.category === cat);
+  $view.innerHTML = '<div class="wrap">' + topHtml()
+    + '<main style="padding:8px 4px 0"><h2 class="page fd">' + title + '</h2><p class="sub">' + subtitle + '</p>'
+    + '<div style="margin-top:8px">' + listHtml(list) + '</div></main></div>';
+  bindCommon();
+}
+function renderProfile(){
+  const favs = getFavs();
+  const favApps = apps.filter(a => favs.includes(a.package_name));
+  const hist = getHistory();
+  let histHtml;
+  if (!hist.length) histHtml = '<p class="sub" style="margin-top:8px">You have not downloaded anything yet.</p>';
+  else {
+    histHtml = hist.map(h => {
+      const m = apps.find(a => a.package_name === h.pkg);
+      const inner = (h.icon_url ? '<img class="appicon" src="' + esc(h.icon_url) + '" alt="" width="48" height="48" style="width:48px;height:48px;border-radius:11px" onerror="this.outerHTML=window.__tile(this.dataset.n,48)" data-n="' + esc(h.name) + '">' : tileHtml(h.name, 48))
+        + '<div class="mid" style="flex:1;min-width:0;padding:0 12px"><p class="name fd" style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(h.name) + '</p>'
+        + '<p class="meta">' + (h.at ? fmtDate(h.at) : "") + '</p></div>';
+      return m ? '<div class="histrow press" role="button" tabindex="0" data-open="' + m.id + '" aria-label="Open ' + esc(h.name) + '">' + inner + '</div>'
+               : '<div class="histrow">' + inner + '</div>';
+    }).join("") + '<button class="clearbtn fd press" id="btnClearHistory">Clear History</button>';
+  }
+  $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0"><h2 class="page fd">Account</h2>'
+    + '<div class="acctcard"><span class="avatar"><svg width="34" height="34" viewBox="0 0 24 24" fill="#241D4D"><path d="M12,12 C14.2,12 16,10.2 16,8 C16,5.8 14.2,4 12,4 C9.8,4 8,5.8 8,8 C8,10.2 9.8,12 12,12 Z M12,13 C8.7,13 4,14.7 4,18 L4,20 L20,20 L20,18 C20,14.7 15.3,13 12,13 Z"/></svg></span>'
+    + '<div style="min-width:0;padding-left:12px"><p class="fd" style="font-size:16px;font-weight:700">Not signed in</p>'
+    + '<p class="sub">Not signed in — no login is needed to download.</p></div></div>'
+    + '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Favourites</h3><div style="margin-top:8px">'
+    + (favApps.length ? favApps.map(cardHtml).join("") : '<p class="sub">No favourites yet — tap Favourite on an app\'s page.</p>') + '</div>'
+    + '<h3 class="fd" style="font-size:17px;font-weight:700;margin-top:20px">Download History</h3>'
+    + '<p style="font-size:12px;color:var(--muted)">Saved on this device — never uploaded anywhere.</p>'
+    + '<div style="margin-top:8px">' + histHtml + '</div>'
+    + '<button class="widebtn fd press" id="btnPolicy">Policy</button>'
+    + '<p class="version">Murshid Store — Web</p></main></div>';
+  bindCommon();
+  const ch = document.getElementById("btnClearHistory");
+  if (ch) ch.addEventListener("click", () => { setHistory([]); render(); });
+  document.getElementById("btnPolicy").addEventListener("click", () => { view = "policy"; render(); window.scrollTo(0, 0); });
+}
+function renderPolicy(){
+  $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
+    + '<button class="backbtn fd press" id="btnBack">← Account</button>'
+    + '<h2 class="page fd">Policy</h2><p class="dbody" style="margin-top:12px">' + esc(STORE_POLICY) + '</p></main></div>';
+  document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
+}
+function renderSearch(){
+  $view.innerHTML = '<div class="wrap" style="padding-top:12px"><div class="searchhead">'
+    + '<button class="iconbtn press" id="btnBack" aria-label="Back" style="color:var(--text)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"/></svg></button>'
+    + '<label class="hidden" for="searchInput">Search apps by name</label>'
+    + '<input class="searchinput" id="searchInput" placeholder="Search apps by name…" autocomplete="off"></div>'
+    + '<div id="searchResults" style="margin-top:16px"><p class="empty">Type an app name to search the store.</p></div></div>';
+  document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
+  const input = document.getElementById("searchInput");
+  input.focus();
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    const box = document.getElementById("searchResults");
+    if (!q) { box.innerHTML = '<p class="empty">Type an app name to search the store.</p>'; return; }
+    const res = apps.filter(a => a.name.toLowerCase().includes(q) || a.category.toLowerCase().includes(q) || a.package_name.toLowerCase().includes(q));
+    box.innerHTML = res.length ? res.map(cardHtml).join("") : '<p class="empty">No apps match your search.</p>';
+    bindCards(box);
+  });
+}
+
+async function openDetail(id){
+  view = "detail";
+  detailApp = null;
+  myRating = 0;
+  render();
+  window.scrollTo(0, 0);
+  try {
+    const rows = await sb("store_apps?select=*&id=eq." + encodeURIComponent(id) + "&published=eq.true&limit=1");
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) { toast("This app is no longer available in the store."); view = "tabs"; render(); return; }
+    const base = apps.find(a => a.id === row.id);
+    detailApp = base || { id: row.id, name: row.name || "", package_name: row.package_name || "", version: row.version || "", size_text: row.size_text || "", category: row.category || "Other", description: row.description || "", policy_text: row.policy_text || "", icon_url: row.icon_url || "", apk_url: row.apk_url || "", created_at: row.created_at || "", rating_avg: null, rating_count: 0, download_count: 0 };
+    detailReviews = [];
+    if (detailApp.package_name) {
+      const rv = await sb("store_reviews?select=*&app_package=eq." + encodeURIComponent(detailApp.package_name) + "&order=created_at.desc").catch(() => null);
+      if (Array.isArray(rv)) detailReviews = rv;
+    }
+    render();
+  } catch(e) {
+    toast(e.message || "This app could not be loaded.");
+    view = "tabs"; render();
+  }
+}
+
+function renderDetail(){
+  const a = detailApp;
+  if (!a) { $view.innerHTML = '<div class="detailbg"><p class="loading">Loading…</p></div>'; return; }
+  const favs = getFavs();
+  const isFav = favs.includes(a.package_name);
+  const others = apps.filter(x => x.id !== a.id).sort((x, y) => (x.category === a.category ? 0 : 1) - (y.category === a.category ? 0 : 1));
+  const ratingTop = (a.rating_count > 0 && a.rating_avg !== null) ? a.rating_avg.toFixed(1) + " ★" : "— ★";
+  const ratingBot = a.rating_count > 0 ? a.rating_count + " reviews" : "New app";
+  const ratingHead = (a.rating_count > 0 && a.rating_avg !== null)
+    ? stars(a.rating_avg) + " " + a.rating_avg.toFixed(1) + " (" + a.rating_count + " reviews)"
+    : "☆☆☆☆☆ New app — no reviews yet";
+  const reviewsHtml = detailReviews.length
+    ? detailReviews.map(r => '<div class="review"><p><span class="rname fd">' + esc(r.user_name || "Guest") + '</span> <span class="rdate">' + fmtDate(r.created_at) + '</span></p>'
+      + '<p class="rstars">' + stars(Number(r.rating) || 0) + '</p>'
+      + (String(r.review_text || "").trim() ? '<p class="rtext">' + esc(r.review_text) + '</p>' : "") + '</div>').join("")
+    : '<p class="sub">No reviews yet — write the first one!</p>';
+  const starBtns = [1,2,3,4,5].map(n => '<button class="starpick fd press" data-star="' + n + '" role="radio" aria-checked="' + (myRating === n) + '" aria-label="' + n + ' star' + (n > 1 ? "s" : "") + '">' + (n <= myRating ? "★" : "☆") + '</button>').join("");
+  $view.innerHTML = '<div class="detailbg"><div class="detailwrap">'
+    + '<button class="backbtn fd press" id="btnBack">← Back</button>'
+    + '<div class="dhead">' + iconHtml(a, 72)
+    + '<div class="mid"><h1 class="fd">' + esc(a.name) + '</h1>'
+    + '<p class="dmeta">' + esc(a.category) + ' • v' + esc(a.version) + ' • ' + esc(a.size_text) + ' • ' + esc(a.package_name) + '</p>'
+    + '<p class="drating">' + ratingHead + '</p></div>'
+    + '<div class="menuwrap"><button class="iconbtn press" id="btnMore" aria-label="More options" style="color:var(--text)">'
+    + '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>'
+    + '<div class="menu hidden" id="moreMenu"><button class="fd press" id="btnShare">Share</button></div></div></div>'
+    + '<div class="stats"><div class="stat"><p class="top">' + ratingTop + '</p><p class="bot">' + ratingBot + '</p></div><div class="vdiv"></div>'
+    + '<div class="stat"><p class="top">' + esc(a.size_text || "—") + '</p><p class="bot">Size</p></div><div class="vdiv"></div>'
+    + '<div class="stat"><p class="top">' + esc(a.category) + '</p><p class="bot">Category</p></div><div class="vdiv"></div>'
+    + '<div class="stat"><p class="top">⬇ ' + a.download_count + '</p><p class="bot">Downloads</p></div></div>'
+    + '<button class="bigdl fd press" id="btnDownload">Download</button>'
+    + '<div class="rowbtns"><button class="fd press" id="btnFav">' + (isFav ? "Remove favourite" : "Favourite") + '</button>'
+    + '<button class="fd press" id="btnReport">Report</button></div>'
+    + '<p class="note" style="margin-top:6px">' + INSTALL_NOTE + '</p>'
+    + '<h3 class="dsec fd">Description</h3><p class="dbody">' + esc(String(a.description || "").trim() ? a.description : "No description given.") + '</p>'
+    + '<h3 class="dsec fd">This app\'s Privacy Policy</h3><p class="policycard">' + esc(String(a.policy_text || "").trim() ? a.policy_text : "No Privacy Policy given for this app.") + '</p>'
+    + '<h3 class="dsec fd">Reviews</h3><div style="margin-top:6px">' + reviewsHtml + '</div>'
+    + '<h3 class="dsec fd">Write a review</h3><p class="sub" style="margin-top:4px">Your name is shown next to your review.</p>'
+    + '<div style="margin-top:8px" role="radiogroup" aria-label="Your star rating">' + starBtns + '</div>'
+    + '<label class="hidden" for="reviewName">Your name</label><input class="field" id="reviewName" placeholder="Your name" maxlength="60">'
+    + '<label class="hidden" for="reviewText">Your review</label><textarea class="field" id="reviewText" placeholder="How did you like this app?" rows="2" maxlength="1000"></textarea>'
+    + '<p class="err hidden" id="reviewErr"></p>'
+    + '<button class="bigdl fd press" id="btnReview" style="margin-top:8px">Submit review</button>'
+    + (others.length ? '<h3 class="dsec fd">More apps</h3><div style="margin-top:8px">' + others.map(cardHtml).join("") + '</div>' : "")
+    + '</div></div>';
+  bindCards($view);
+  document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
+  document.getElementById("btnMore").addEventListener("click", () => document.getElementById("moreMenu").classList.toggle("hidden"));
+  document.getElementById("btnShare").addEventListener("click", async () => {
+    document.getElementById("moreMenu").classList.add("hidden");
+    const text = "Murshid Store - " + a.name + " https://murshid.store/app/" + slugify(a.name);
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else if (navigator.clipboard) { await navigator.clipboard.writeText(text); toast("Share text copied"); }
+      else toast(text);
+    } catch(e) { /* share sheet cancelled */ }
+  });
+  document.getElementById("btnDownload").addEventListener("click", () => handleDownload(a));
+  document.getElementById("btnFav").addEventListener("click", () => { toggleFav(a); render(); });
+  document.getElementById("btnReport").addEventListener("click", () => showReport(a));
+  $view.querySelectorAll("[data-star]").forEach(b => b.addEventListener("click", () => {
+    myRating = Number(b.getAttribute("data-star"));
+    $view.querySelectorAll("[data-star]").forEach((x, i) => { x.textContent = (i + 1) <= myRating ? "★" : "☆"; x.setAttribute("aria-checked", String(myRating === i + 1)); });
+  }));
+  document.getElementById("btnReview").addEventListener("click", async () => {
+    const err = document.getElementById("reviewErr");
+    const name = document.getElementById("reviewName").value.trim();
+    const text = document.getElementById("reviewText").value.trim();
+    const fail = m => { err.textContent = m; err.classList.remove("hidden"); };
+    if (myRating === 0) return fail("Please tap a star rating first.");
+    if (!name) return fail("Please write your name first.");
+    err.classList.add("hidden");
+    try {
+      await sb("store_reviews", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ app_package: a.package_name, user_name: name, user_email: "", user_photo: "", rating: myRating, review_text: text }) });
+      toast("Review submitted.");
+      await loadApps();
+      const fresh = apps.find(x => x.id === a.id);
+      if (fresh) detailApp = fresh;
+      const rv = await sb("store_reviews?select=*&app_package=eq." + encodeURIComponent(a.package_name) + "&order=created_at.desc").catch(() => null);
+      if (Array.isArray(rv)) detailReviews = rv;
+      myRating = 0;
+      render();
+    } catch(e) { fail(e.message || "Review could not be submitted."); }
+  });
+}
+
+function showReport(a){
+  $dialog.innerHTML = '<div class="scrim" role="dialog" aria-modal="true" aria-label="Report this app"><div class="dialog">'
+    + '<h3 class="fd">Report this app</h3><div style="margin-top:8px">'
+    + REPORT_REASONS.map(r => '<button class="reason press" data-reason="' + esc(r) + '">' + esc(r) + '</button>').join("")
+    + '</div><button class="widebtn fd press" id="btnCancelReport" style="margin-top:12px;height:48px">Cancel</button></div></div>';
+  document.getElementById("btnCancelReport").addEventListener("click", () => { $dialog.innerHTML = ""; });
+  $dialog.querySelectorAll("[data-reason]").forEach(b => b.addEventListener("click", async () => {
+    const reason = b.getAttribute("data-reason");
+    $dialog.innerHTML = "";
+    try {
+      await sb("store_reports", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ app_package: a.package_name, app_name: a.name, user_email: "", user_name: "Web visitor", reason: reason, details: "" }) });
+      toast("Report sent. The Admin will review it.");
+    } catch(e) { toast("Report could not be sent: " + (e.message || "error")); }
+  }));
+}
+
+function toggleFav(a){
+  const favs = getFavs();
+  const has = favs.includes(a.package_name);
+  setFavs(has ? favs.filter(p => p !== a.package_name) : [...favs, a.package_name]);
+  toast(has ? "Removed from favourites." : "Added to favourites.");
+}
+
+function handleDownload(a){
+  if (!a.apk_url) { toast("No download link for this app yet."); return; }
+  sb("store_downloads", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ app_package: a.package_name, app_name: a.name, user_email: "", user_name: "Web visitor" }) }).catch(() => {});
+  const hist = getHistory().filter(h => h.pkg !== a.package_name);
+  hist.unshift({ pkg: a.package_name, name: a.name, icon_url: a.icon_url, at: new Date().toISOString() });
+  setHistory(hist.slice(0, 50));
+  const link = document.createElement("a");
+  link.href = a.apk_url; link.rel = "noopener";
+  document.body.appendChild(link); link.click(); link.remove();
+  toast("Downloading " + a.name + "…");
+}
+
+function bindCards(root){
+  root.querySelectorAll("[data-open]").forEach(el => {
+    const go = () => openDetail(Number(el.getAttribute("data-open")));
+    el.addEventListener("click", e => { if (e.target.closest("[data-dl]")) return; go(); });
+    el.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  });
+  root.querySelectorAll("[data-dl]").forEach(el => {
+    el.addEventListener("click", e => {
+      e.stopPropagation();
+      const a = apps.find(x => x.id === Number(el.getAttribute("data-dl")));
+      if (a) handleDownload(a);
+    });
+  });
+}
+function bindCommon(){
+  bindCards($view);
+  const s = document.getElementById("btnSearch");
+  if (s) s.addEventListener("click", () => { view = "search"; render(); window.scrollTo(0, 0); });
+  const r = document.getElementById("btnRefresh");
+  if (r) r.addEventListener("click", async () => { try { await loadApps(); render(); } catch(e) { toast(e.message); } });
+  $view.querySelectorAll("[data-chip]").forEach(el => el.addEventListener("click", () => { chip = el.getAttribute("data-chip"); render(); }));
+}
+
+function renderNav(){
+  const row = document.getElementById("navrow");
+  row.innerHTML = NAV.map(t => '<button class="navtab press-tab' + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '" aria-label="' + t.label + '"' + (tab === t.id ? ' aria-current="page"' : "") + '>'
+    + '<svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + t.path + '"/></svg>'
+    + '<span class="lbl fd">' + t.label + '</span><span class="dot"></span></button>').join("");
+  const idx = NAV.findIndex(t => t.id === tab);
+  const ind = document.getElementById("indicator");
+  ind.style.left = "calc(14px + " + idx + " * (100% - 14px) / 4)";
+  ind.style.width = "calc((100% - 14px) / 4 - 14px)";
+  row.querySelectorAll("[data-tab]").forEach(el => el.addEventListener("click", () => {
+    tab = el.getAttribute("data-tab"); view = "tabs"; render(); window.scrollTo(0, 0);
+  }));
+}
+
+function render(){
+  const inSub = view !== "tabs";
+  $nav.style.display = inSub ? "none" : "";
+  document.getElementById("orbP").style.display = inSub ? "none" : "";
+  document.getElementById("orbB").style.display = inSub ? "none" : "";
+  if (view === "search") return renderSearch();
+  if (view === "detail") return renderDetail();
+  if (view === "policy") return renderPolicy();
+  renderNav();
+  if (tab === "home") renderHome();
+  else if (tab === "games") renderCategory("Games", "Games", "All apps in the Games category");
+  else if (tab === "illegal") renderCategory("Illegal", "Illegal", "Apps in this category — whatever the Admin uploads shows here.");
+  else renderProfile();
+}
+
+(async function init(){
+  setTimeout(() => document.getElementById("splash").classList.add("gone"), 1500);
+  setTimeout(() => document.getElementById("splash").remove(), 2100);
+  $view.innerHTML = '<div class="wrap"><p class="loading">Loading…</p></div>';
+  renderNav();
+  try {
+    await loadApps();
+  } catch(e) {
+    $view.innerHTML = '<div class="wrap"><div style="padding:56px 0;text-align:center"><p class="sub">' + esc(e.message || "The store could not be loaded.") + '</p>'
+      + '<button class="dlbtn fd press" style="margin-top:16px" onclick="location.reload()">Retry</button></div></div>';
+    return;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
