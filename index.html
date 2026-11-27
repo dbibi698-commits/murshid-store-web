@@ -373,7 +373,22 @@ function catName(c){ return c === "Illegal" ? "Tools" : (c || "Other"); } // map
 const CAT_COLORS = {All:"#FF6B4A",Games:"#22C55E",Social:"#3B82F6",Tools:"#F59E0B",Video:"#A855F7",Music:"#EC4899",Education:"#14B8A6",Business:"#6366F1",Health:"#84CC16",Shopping:"#F97316",Other:"#64748B"};
 const REPORT_REASONS = ["Broken APK — APK is broken / won't install","Wrong app","Harmful — harmful / suspicious","Other — another problem"];
 const INSTALL_NOTE = "When the download finishes, open the APK file to install it. No login needed.";
-const STORE_POLICY = "Murshid Store Policy\n\n1. Anyone can browse and download apps from this store with no login at all.\n2. A downloaded APK installs through Android's own system installer — Play Protect scans it normally. Play Protect must NOT be turned off, and nobody will ask you to turn it off.\n3. Writing a review shows your name next to it.\n4. Every app's own Privacy Policy is shown on its details page — read it before downloading.\n5. The Admin is responsible for the apps they upload. Do not download apps that look suspicious.";
+const PRIVACY_HTML = '<h3 class="dsec fd">What this store is</h3><p class="dbody">Senori (Murshid Store) is a free Android app store. You can browse and download apps and games as APK files. No login is needed to download.</p>'
+  + '<h3 class="dsec fd">Accounts</h3><p class="dbody">If you sign in or register, your name and email address are stored with Firebase Authentication (Google) so the same account works in the Murshid Store app and on this website. Your profile photo comes from your Google account when you sign in with Google. We never see or store your password.</p>'
+  + '<h3 class="dsec fd">Download history</h3><p class="dbody">Your download history is saved only on your own device, in your browser. It is never uploaded anywhere.</p>'
+  + '<h3 class="dsec fd">Download counts</h3><p class="dbody">When you download an app, we record only the app name and package name so the store can show download counts. No email or personal information is sent with it.</p>'
+  + '<h3 class="dsec fd">Reviews</h3><p class="dbody">Only signed-in users can write reviews, and your name is shown next to your review.</p>'
+  + '<h3 class="dsec fd">Advertising</h3><p class="dbody">This site may show ads from Google AdSense. Google and its partners may use cookies to show ads based on your visits to this and other sites. You can opt out of personalised ads in your Google Ad Settings. We never ask you to click ads.</p>'
+  + '<h3 class="dsec fd">Contact</h3><p class="dbody">Questions or requests about your data: dbibi698@gmail.com.</p>'
+  + '<p class="dbody" style="color:var(--muted)">Last updated: 27 November 2026.</p>';
+const TERMS_HTML = '<h3 class="dsec fd">Use of the store</h3><p class="dbody">Senori (Murshid Store) is a free store for Android apps and games. You may browse and download apps for your own use.</p>'
+  + '<h3 class="dsec fd">Downloads</h3><p class="dbody">Downloads are free. A downloaded APK installs through Android&apos;s own system installer. Google Play Protect scans it normally — do not turn Play Protect off, and nobody from this store will ever ask you to turn it off.</p>'
+  + '<h3 class="dsec fd">Content</h3><p class="dbody">Apps are uploaded by the store admin. Every app&apos;s own Privacy Policy is shown on its details page — read it before downloading. Do not download apps that look suspicious. The admin may remove any app at any time.</p>'
+  + '<h3 class="dsec fd">Reviews</h3><p class="dbody">Reviews must be honest and about the app. Only signed-in users can write reviews, and your name is shown next to yours.</p>'
+  + '<h3 class="dsec fd">No warranty</h3><p class="dbody">Apps are provided as-is. The store is not responsible for any problem caused by an app you download.</p>'
+  + '<h3 class="dsec fd">Changes</h3><p class="dbody">These terms and this policy may change. The latest version is always shown here.</p>'
+  + '<h3 class="dsec fd">Contact</h3><p class="dbody">dbibi698@gmail.com.</p>'
+  + '<p class="dbody" style="color:var(--muted)">Last updated: 27 November 2026.</p>';
 const NAV = [
   { id:"home", label:"Home", path:"M3,10.5 L12,3 L21,10.5 M5,9.5 V21 H19 V9.5 M9,21 V14 H15,21" },
   { id:"games", label:"Games", path:"M6,8 H18 C20.5,8 22,10 21,13 L19.5,18 C19,20 17,20 15.5,18 L13,16 H11 L8.5,18 C7,20 5,20 4.5,18 L3,13 C2,10 3.5,8 6,8 Z M7,11 V15 M5,13 H9" },
@@ -540,12 +555,19 @@ function renderProfile(){
 }
 function footerHtml(){
   return '<footer class="footer"><button class="flink press" data-page="policy">Privacy Policy</button><span class="fsep">•</span>'
+    + '<button class="flink press" data-page="terms">Terms</button><span class="fsep">•</span>'
     + '<button class="flink press" data-page="about">About</button><span class="fsep">•</span>'
     + '<button class="flink press" data-page="contact">Contact</button>'
     + '<p class="fcopy">Senori — Murshid Store • Free Android apps &amp; games</p></footer>';
 }
 const ABOUT_TEXT = "Senori (Murshid Store) is a free Android app store. Browse and download apps and games as APK files — no login is needed to download. Apps are uploaded by the store admin; every app’s own Privacy Policy is shown on its detail page. Reviews are written by signed-in users and show their name next to the review.";
 const CONTACT_TEXT = "Questions, reports or takedown requests — email dbibi698@gmail.com. To report a single app, you can also use the Report button on that app’s page.";
+function renderTerms(){
+  $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
+    + '<button class="backbtn fd press" id="btnBack">← Back</button>'
+    + '<h2 class="page fd">Terms of Service</h2>' + TERMS_HTML + '</main></div>';
+  document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
+}
 function renderAbout(){
   $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
     + '<button class="backbtn fd press" id="btnBack">← Back</button>'
@@ -561,7 +583,7 @@ function renderContact(){
 function renderPolicy(){
   $view.innerHTML = '<div class="wrap"><main style="padding:8px 4px 0">'
     + '<button class="backbtn fd press" id="btnBack">← Account</button>'
-    + '<h2 class="page fd">Policy</h2><p class="dbody" style="margin-top:12px">' + esc(STORE_POLICY) + '</p></main></div>';
+    + '<h2 class="page fd">Privacy Policy</h2>' + PRIVACY_HTML + '</main></div>';
   document.getElementById("btnBack").addEventListener("click", () => { view = "tabs"; render(); });
 }
 function renderSearch(){
@@ -862,6 +884,7 @@ function render(){
   if (view === "search") return renderSearch();
   if (view === "detail") return renderDetail();
   if (view === "policy") return renderPolicy();
+  if (view === "terms") return renderTerms();
   if (view === "about") return renderAbout();
   if (view === "contact") return renderContact();
   renderNav();
